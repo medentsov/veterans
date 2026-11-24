@@ -1,0 +1,108 @@
+/* Тёплая светлая тема */
+QWidget {
+    color: #2E2A26;
+}
+QMainWindow, QDialog {
+    background-color: #FDF8F2;
+}
+QMenuBar {
+    background-color: #F5EBDD;
+    color: #2E2A26;
+}
+QMenuBar::item:selected {
+    background-color: #E8D5BE;
+}
+QMenu {
+    background-color: #FFFDF9;
+    border: 1px solid #D8C4AA;
+}
+QMenu::item:selected {
+    background-color: #E8D5BE;
+}
+QToolBar {
+    background-color: #F5EBDD;
+    border: none;
+    spacing: 4px;
+}
+QToolButton {
+    background: transparent;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+QToolButton:hover {
+    background-color: #E8D5BE;
+}
+QToolButton:pressed {
+    background-color: #DCC3A3;
+}
+QLineEdit, QComboBox, QSpinBox, QDateEdit {
+    background-color: #FFFDF9;
+    border: 1px solid #C9B294;
+    border-radius: 4px;
+    padding: 3px 6px;
+    selection-background-color: #B5651D;
+    selection-color: #FFFFFF;
+}
+QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QDateEdit:focus {
+    border: 1px solid #B5651D;
+}
+QPushButton {
+    background-color: #B5651D;
+    color: #FFFFFF;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 14px;
+}
+QPushButton:hover {
+    background-color: #C4752D;
+}
+QPushButton:pressed {
+    background-color: #9A5315;
+}
+QPushButton:disabled {
+    background-color: #D9C9B5;
+    color: #8A7B69;
+}
+QTableView {
+    background-color: #FFFDF9;
+    alternate-background-color: #F8F1E7;
+    gridline-color: #E0D0BC;
+    selection-background-color: #B5651D;
+    selection-color: #FFFFFF;
+}
+QHeaderView::section {
+    background-color: #EADBC8;
+    color: #2E2A26;
+    border: none;
+    border-right: 1px solid #D8C4AA;
+    border-bottom: 1px solid #D8C4AA;
+    padding: 5px;
+    font-weight: bold;
+}
+QStatusBar {
+    background-color: #F5EBDD;
+    color: #6B5D4F;
+}
+QTabWidget::pane {
+    border: 1px solid #D8C4AA;
+}
+QTabBar::tab {
+    background-color: #F0E3D2;
+    padding: 6px 12px;
+    border: 1px solid #D8C4AA;
+    border-bottom: none;
+}
+QTabBar::tab:selected {
+    background-color: #FFFDF9;
+}
+QGroupBox {
+    border: 1px solid #D8C4AA;
+    border-radius: 4px;
+    margin-top: 10px;
+    padding-top: 8px;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 4px;
+}

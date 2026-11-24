@@ -1,0 +1,30 @@
+# Сборочные артефакты
+build/
+build-*/
+out/
+dist/
+installer/Output/
+
+# Данные во время разработки
+data/
+logs/
+backups/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Qt Creator / IDE
+*.user
+*.autosave
+CMakeLists.txt.user*
+.vscode/
+.idea/
+
+# Логи и временные файлы
+*.log
+*.tmp
+
+# Python
+__pycache__/
+*.pyc

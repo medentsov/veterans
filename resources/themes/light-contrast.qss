@@ -1,0 +1,110 @@
+/* Контрастная светлая тема */
+QWidget {
+    color: #000000;
+}
+QMainWindow, QDialog {
+    background-color: #FFFFFF;
+}
+QMenuBar {
+    background-color: #F2F2F2;
+    color: #000000;
+}
+QMenuBar::item:selected {
+    background-color: #D9D9D9;
+}
+QMenu {
+    background-color: #FFFFFF;
+    border: 1px solid #000000;
+}
+QMenu::item:selected {
+    background-color: #000000;
+    color: #FFFFFF;
+}
+QToolBar {
+    background-color: #F2F2F2;
+    border: none;
+    spacing: 4px;
+}
+QToolButton {
+    background: transparent;
+    padding: 4px 8px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+}
+QToolButton:hover {
+    background-color: #E0E0E0;
+    border: 1px solid #000000;
+}
+QToolButton:pressed {
+    background-color: #CCCCCC;
+}
+QLineEdit, QComboBox, QSpinBox, QDateEdit {
+    background-color: #FFFFFF;
+    border: 1px solid #000000;
+    border-radius: 4px;
+    padding: 3px 6px;
+    selection-background-color: #000000;
+    selection-color: #FFFFFF;
+}
+QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QDateEdit:focus {
+    border: 2px solid #000000;
+}
+QPushButton {
+    background-color: #000000;
+    color: #FFFFFF;
+    border: 1px solid #000000;
+    border-radius: 4px;
+    padding: 6px 14px;
+}
+QPushButton:hover {
+    background-color: #333333;
+}
+QPushButton:pressed {
+    background-color: #000000;
+}
+QPushButton:disabled {
+    background-color: #D0D0D0;
+    color: #666666;
+    border: 1px solid #999999;
+}
+QTableView {
+    background-color: #FFFFFF;
+    alternate-background-color: #F7F7F7;
+    gridline-color: #000000;
+    selection-background-color: #000000;
+    selection-color: #FFFFFF;
+}
+QHeaderView::section {
+    background-color: #E6E6E6;
+    color: #000000;
+    border: 1px solid #000000;
+    padding: 5px;
+    font-weight: bold;
+}
+QStatusBar {
+    background-color: #F2F2F2;
+    color: #333333;
+}
+QTabWidget::pane {
+    border: 1px solid #000000;
+}
+QTabBar::tab {
+    background-color: #E6E6E6;
+    padding: 6px 12px;
+    border: 1px solid #000000;
+    border-bottom: none;
+}
+QTabBar::tab:selected {
+    background-color: #FFFFFF;
+}
+QGroupBox {
+    border: 1px solid #000000;
+    border-radius: 4px;
+    margin-top: 10px;
+    padding-top: 8px;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 4px;
+}

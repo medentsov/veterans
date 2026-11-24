@@ -1,0 +1,9 @@
+#pragma once
+
+// Файл генерируется CMake из src/core/version.h.in.
+// Версия задаётся один раз в project(Veterans VERSION ...) в CMakeLists.txt.
+
+#define APP_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
+#define APP_VERSION_MINOR @PROJECT_VERSION_MINOR@
+#define APP_VERSION_PATCH @PROJECT_VERSION_PATCH@
+#define APP_VERSION_STRING "@PROJECT_VERSION@"

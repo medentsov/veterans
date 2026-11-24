@@ -1,0 +1,14 @@
+<RCC>
+    <qresource prefix="/">
+        <file alias="icons/veterans-256.png">icons/veterans-256.png</file>
+        <file alias="icons/veterans-64.png">icons/veterans-64.png</file>
+        <file alias="icons/veterans-32.png">icons/veterans-32.png</file>
+        <file alias="db/001_init.sql">db/001_init.sql</file>
+        <file alias="db/002_seed.sql">db/002_seed.sql</file>
+        <file alias="db/003_phone.sql">db/003_phone.sql</file>
+        <file alias="themes/light-warm.qss">themes/light-warm.qss</file>
+        <file alias="themes/light-cool.qss">themes/light-cool.qss</file>
+        <file alias="themes/light-green.qss">themes/light-green.qss</file>
+        <file alias="themes/light-contrast.qss">themes/light-contrast.qss</file>
+    </qresource>
+</RCC>
