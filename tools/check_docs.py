@@ -116,10 +116,44 @@ def check_no_winapi():
     check("M10-04: в исходниках нет WinAPI", sources)
 
 
+def check_windows_checklist():
+    """Чеклист приёмки на Windows: все открытые пункты плана должны быть в нём."""
+
+    path = ROOT / "docs" / "WINDOWS-CHECKLIST.md"
+
+    def exists():
+        assert path.exists(), "нет docs/WINDOWS-CHECKLIST.md"
+        text = read(path)
+        assert len(text) > 1500, "чеклист слишком короткий"
+
+    check("чеклист Windows существует", exists)
+
+    def items():
+        text = read(path)
+        for item in ("M1-07", "M11-04", "M8-06", "M12-04", "M12-05", "M12-08"):
+            require(text, item, f"пункт {item}")
+        for section in ("## 1. Установка ПО", "## 3. Сборка и автотесты",
+                        "## 6. Печать", "## 7. Excel и PDF",
+                        "## 8. Приёмка", "## 9. Отчёт разработчику"):
+            require(text, section, f"раздел «{section}»")
+        assert text.count("- [ ]") >= 30, "слишком мало шагов для проверки"
+        require(text, "Windows 11", "поддержка Windows 11")
+        require(text, "x64", "разрядность")
+
+    check("чеклист Windows: шаги и пункты плана", items)
+
+    def readme():
+        require(read(README), "docs/WINDOWS-CHECKLIST.md",
+                "ссылка на чеклист из README")
+
+    check("README ссылается на чеклист Windows", readme)
+
+
 def main():
     print("Проверка README и отсутствия WinAPI (M10-04/M11-05) без Qt")
     check_readme()
     check_no_winapi()
+    check_windows_checklist()
 
     print(f"\nПроверок: {checks}, провалов: {len(failures)}")
     if failures:
