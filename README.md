@@ -138,6 +138,11 @@ python3 tools/check_pdf_text.py build/test-out
 python3 tools/check_excel_export.py build/test-out/list.xlsx
 ```
 
+## Проверка на Windows
+
+Пошаговый чеклист для целевой машины (установка Qt, сборка, portable-архив,
+принтер, Excel/PDF, приёмка) — `docs/WINDOWS-CHECKLIST.md`.
+
 Визуальная сверка макетов печати (M0-08) выполняется без Windows:
 
 ```bash
