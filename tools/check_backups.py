@@ -12,6 +12,7 @@ import shutil
 import sqlite3
 import sys
 import tempfile
+from contextlib import closing
 from pathlib import Path
 
 DB_DIR = Path(__file__).resolve().parent.parent / "resources" / "db"
@@ -94,7 +95,7 @@ def main():
 
         def snapshot_valid():
             assert quick_check_ok(snapshot), "quick_check не ok"
-            with sqlite3.connect(snapshot) as check_db:
+            with closing(sqlite3.connect(snapshot)) as check_db:
                 assert check_db.execute("SELECT count(*) FROM person").fetchone()[0] == 1
 
         check("копия целая и содержит данные", snapshot_valid)
@@ -119,14 +120,17 @@ def main():
 
         def restore():
             target = root / "restore.db"
-            with sqlite3.connect(target) as other:
+            # closing(): на Windows открытый файл нельзя удалить (WinError 32),
+            # а `with sqlite3.connect(...)` соединение не закрывает.
+            with closing(sqlite3.connect(target)) as other:
                 other.execute("CREATE TABLE t(x)")
+                other.commit()
             safety = backups / "veterans-before-restore-20261119-130000.db"
             shutil.copy2(target, safety)
             target.unlink()
             shutil.copy2(snapshot, target)
             assert quick_check_ok(target)
-            with sqlite3.connect(target) as restored:
+            with closing(sqlite3.connect(target)) as restored:
                 assert restored.execute("SELECT count(*) FROM person").fetchone()[0] == 1
             assert safety.exists(), "страховочная копия не создана"
 
