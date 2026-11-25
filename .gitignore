@@ -9,6 +9,7 @@ installer/Output/
 /data/
 /logs/
 /backups/
+/settings.ini
 *.db
 *.db-journal
 *.db-wal

@@ -71,8 +71,14 @@ try {
             }
         }
 
+        # Флаги --release/--debug не передаём: для MinGW windeployqt определяет
+        # debug по флагу IMAGE_FILE_DEBUG_STRIPPED, который GNU ld не ставит даже
+        # в release-сборке. С --release фильтр плагинов оставляет только
+        # «release», не находит ни одного и падает с «Unable to find the
+        # platform plugin». Автоопределение для MinGW использует режим
+        # MatchDebugOrRelease и находит нужные плагины.
         Write-Host "Копирование библиотек Qt..."
-        & $windeployqt --release --compiler-runtime --no-translations $exe
+        & $windeployqt --compiler-runtime --no-translations $exe
         if ($LASTEXITCODE -ne 0) {
             throw "windeployqt завершился с кодом $LASTEXITCODE"
         }
@@ -80,16 +86,43 @@ try {
 
     if ($Tests) {
         $exeDir = Split-Path -Parent $exe
+
+        # Автотесты идут с QT_QPA_PLATFORM=offscreen, а windeployqt кладёт
+        # только qwindows.dll. Копируем плагин offscreen рядом с exe, чтобы
+        # тестам не требовался установленный Qt.
+        if (-not $NoDeploy) {
+            $windeployqtExe = (Get-Command $windeployqt -ErrorAction SilentlyContinue).Source
+            if ($windeployqtExe) {
+                $qtPluginsDir = Join-Path (Split-Path (Split-Path $windeployqtExe -Parent) -Parent) "plugins"
+                $offscreenPlugin = Join-Path $qtPluginsDir "platforms\qoffscreen.dll"
+                if (Test-Path $offscreenPlugin) {
+                    $platformsDir = Join-Path $exeDir "platforms"
+                    New-Item -ItemType Directory -Force -Path $platformsDir | Out-Null
+                    Copy-Item $offscreenPlugin (Join-Path $platformsDir "qoffscreen.dll") -Force
+                } else {
+                    Write-Warning "Не найден плагин offscreen: $offscreenPlugin"
+                }
+            }
+        }
+
         $testCandidates = @(
             (Join-Path $exeDir "veterans_tests.exe"),
             (Join-Path (Join-Path $exeDir "tests") "veterans_tests.exe"),
             (Join-Path (Join-Path (Join-Path $buildDir "tests") "Release") "veterans_tests.exe")
         )
-        $tests = $testCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
-        if ($tests) {
+        # Имя переменной не должно совпадать с параметром [switch]$Tests:
+        # PowerShell не различает регистр, и присваивание строки в $tests
+        # падало с «не удалось преобразовать String в SwitchParameter».
+        $testsExe = $testCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+        if ($testsExe) {
             Write-Host "Автотесты..."
             $env:QT_QPA_PLATFORM = "offscreen"
-            & $tests
+            # На Windows Qt пишет qInfo/qWarning в stderr, только если видит
+            # консоль; иначе сообщения уходят в OutputDebugString и теряются
+            # при перенаправлении вывода. Форсируем stderr, чтобы итог
+            # «Проверок: N, провалов: M» попадал в лог сборки.
+            $env:QT_ASSUME_STDERR_HAS_CONSOLE = "1"
+            & $testsExe
             if ($LASTEXITCODE -ne 0) {
                 throw "автотесты завершились с кодом $LASTEXITCODE"
             }
