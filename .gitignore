@@ -6,9 +6,9 @@ dist/
 installer/Output/
 
 # Данные во время разработки
-data/
-logs/
-backups/
+/data/
+/logs/
+/backups/
 *.db
 *.db-journal
 *.db-wal
