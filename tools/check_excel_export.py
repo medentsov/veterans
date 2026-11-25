@@ -192,7 +192,14 @@ def check_xml_logic():
 
     def source_guard():
         source = CPP.read_text(encoding="utf-8")
-        assert 'sheet.mid(viewStart + 10, 1) == QLatin1String("s")' in source, \
+        # Сравнение символа после «<sheetView»: принимаем и QByteArray::at()
+        # (на Qt 6.5 вариант mid() == QLatin1String не компилируется из-за
+        # неоднозначной перегрузки оператора ==), и прежнюю запись через mid().
+        candidates = (
+            "sheet.at(viewStart + 10) == 's'",
+            'sheet.mid(viewStart + 10, 1) == QLatin1String("s")',
+        )
+        assert any(item in source for item in candidates), \
             "нет пропуска контейнера <sheetViews> при поиске <sheetView>"
 
     check("исходник: <sheetViews> не путается с <sheetView>", source_guard)

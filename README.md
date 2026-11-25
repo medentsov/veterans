@@ -87,6 +87,8 @@ powershell -ExecutionPolicy Bypass -File build.ps1
 | Неверный масштаб интерфейса | Проверьте масштаб DPI в настройках Windows (125–200 %). |
 | Печать недоступна | Отметьте записи галочками — без них печать отключена. |
 | Настройки не сохраняются | Убедитесь, что каталог программы доступен для записи, либо запускайте из папки на диске. |
+| `windeployqt`: «Unable to find the platform plugin» | Не передавайте `--release` для MinGW: debug/release определяется по флагу PE, которого GNU ld не ставит. `build.ps1` использует автоопределение — запускайте его, а не `windeployqt` вручную. |
+| Автотесты не печатают «Проверок: …» | Qt пишет в stderr, только когда видит консоль, иначе сообщения уходят в `OutputDebugString`. `build.ps1` выставляет `QT_ASSUME_STDERR_HAS_CONSOLE=1`; при ручном запуске задайте эту переменную сами. |
 
 ## Linux и AppImage
 
@@ -133,6 +135,18 @@ python3 tools/check_pdf_text.py build/test-out
 Результат: автотесты 97/97, проверки PDF/Excel 9/9. Приложение, запущенное из
 пустой папки, создаёт `data/veterans.db` (схема v3), `logs/app.log` и суточную
 копию в `backups/`.
+
+Тот же цикл проверен на целевой платформе — Windows 10 Pro 22H2, Qt 6.5.3,
+MinGW 11.2.0, CMake 4.5.1 (M1-07):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File build.ps1 -Tests
+```
+
+Результат: `Veterans.exe` и `veterans_tests.exe` собраны, DLL и плагины Qt
+разложены рядом (`platforms\`, `styles\`, `sqldrivers\`), автотесты — «Проверок:
+97, провалов: 0». Запуск с PATH без Qt и MinGW создаёт `data/veterans.db`
+(WAL), `logs/app.log`, `settings.ini` и суточную копию в `backups/`.
 
 Сформированные документы можно проверить отдельно:
 
