@@ -75,8 +75,11 @@ bool injectWorksheetFeatures(const QString &filePath, int lastRow, QString *erro
             // indexOf("<sheetView") попадает и в контейнер <sheetViews>, поэтому
             // ищем именно элемент <sheetView ...>.
             qsizetype viewStart = sheet.indexOf("<sheetView");
-            while (viewStart >= 0 && sheet.mid(viewStart + 10, 1) == QLatin1String("s"))
+            // Пропускаем контейнер <sheetViews>: после имени элемента идёт «s».
+            while (viewStart >= 0 && viewStart + 10 < sheet.size()
+                   && sheet.at(viewStart + 10) == 's') {
                 viewStart = sheet.indexOf("<sheetView", viewStart + 10);
+            }
             if (viewStart < 0) {
                 *error = QStringLiteral("В листе Excel не найден блок sheetView.");
                 return false;
