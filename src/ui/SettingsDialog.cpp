@@ -3,6 +3,7 @@
 #include "core/AppPaths.h"
 #include "core/Theme.h"
 #include "data/BackupService.h"
+#include "data/Database.h"
 
 #include <QCheckBox>
 #include <QComboBox>
@@ -15,6 +16,7 @@
 #include <QIcon>
 #include <QLabel>
 #include <QLineEdit>
+#include <QListWidget>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QSettings>
@@ -160,11 +162,38 @@ QWidget *SettingsDialog::createBackupTab()
     m_backupInfo->setWordWrap(true);
     layout->addWidget(m_backupInfo);
 
+    m_backupList = new QListWidget(tab);
+    m_backupList->setMinimumHeight(150);
+    m_backupList->setAlternatingRowColors(true);
+    m_backupList->setToolTip(
+        tr("Копии хранятся в %1").arg(QDir::toNativeSeparators(
+            AppPaths::backupsDir())));
+    connect(m_backupList, &QListWidget::itemSelectionChanged, this, [this] {
+        if (m_restoreButton)
+            m_restoreButton->setEnabled(m_backupList->currentItem() != nullptr);
+    });
+    layout->addWidget(m_backupList, 1);
+
+    auto *hint = new QLabel(
+        tr("Восстановление заменяет текущую базу выбранной копией. "
+           "Текущая база сохраняется рядом с копиями как "
+           "veterans-before-restore-*.db, после восстановления приложение "
+           "перезапускается."),
+        tab);
+    hint->setWordWrap(true);
+    layout->addWidget(hint);
+
     auto *row = new QHBoxLayout;
     auto *createButton = new QPushButton(tr("Создать копию сейчас"), tab);
     connect(createButton, &QPushButton::clicked,
             this, &SettingsDialog::createBackupNow);
     row->addWidget(createButton);
+
+    m_restoreButton = new QPushButton(tr("Восстановить…"), tab);
+    m_restoreButton->setEnabled(false);
+    connect(m_restoreButton, &QPushButton::clicked,
+            this, &SettingsDialog::restoreSelectedBackup);
+    row->addWidget(m_restoreButton);
 
     auto *openButton = new QPushButton(tr("Открыть папку"), tab);
     connect(openButton, &QPushButton::clicked,
@@ -176,7 +205,6 @@ QWidget *SettingsDialog::createBackupTab()
     m_backupStatus = new QLabel(tab);
     m_backupStatus->setWordWrap(true);
     layout->addWidget(m_backupStatus);
-    layout->addStretch();
 
     refreshBackupInfo();
     return tab;
@@ -184,26 +212,52 @@ QWidget *SettingsDialog::createBackupTab()
 
 void SettingsDialog::refreshBackupInfo()
 {
-    if (!m_backupInfo)
-        return;
-
     const QStringList backups = BackupService::list();
-    if (backups.isEmpty()) {
-        m_backupInfo->setText(
-            tr("Резервных копий пока нет. Автобэкап создаётся при запуске "
-               "раз в сутки, хранится до %1 копий.")
-                .arg(BackupService::kKeepFiles));
-        return;
+
+    if (m_backupInfo) {
+        if (backups.isEmpty()) {
+            m_backupInfo->setText(
+                tr("Резервных копий пока нет. Автобэкап создаётся при запуске "
+                   "раз в сутки, хранится до %1 копий.")
+                    .arg(BackupService::kKeepFiles));
+        } else {
+            const QFileInfo latest(backups.first());
+            m_backupInfo->setText(
+                tr("Копий: %1 (хранится до %2). Последняя: %3, %4 КБ.")
+                    .arg(backups.size())
+                    .arg(BackupService::kKeepFiles)
+                    .arg(latest.lastModified().toString(
+                        QStringLiteral("dd.MM.yyyy HH:mm")))
+                    .arg(qMax<qint64>(1, latest.size() / 1024)));
+        }
     }
 
-    const QFileInfo latest(backups.first());
-    m_backupInfo->setText(
-        tr("Копий: %1 (хранится до %2). Последняя: %3, %4 КБ.")
-            .arg(backups.size())
-            .arg(BackupService::kKeepFiles)
-            .arg(latest.lastModified().toString(
-                QStringLiteral("dd.MM.yyyy HH:mm")))
-            .arg(qMax<qint64>(1, latest.size() / 1024)));
+    refreshBackupList(backups);
+}
+
+void SettingsDialog::refreshBackupList(const QStringList &backups)
+{
+    if (!m_backupList)
+        return;
+
+    m_backupList->clear();
+    for (const QString &path : backups) {
+        const QFileInfo info(path);
+        auto *item = new QListWidgetItem(
+            tr("%1 — %2 КБ — %3")
+                .arg(info.lastModified().toString(
+                    QStringLiteral("dd.MM.yyyy HH:mm")))
+                .arg(qMax<qint64>(1, info.size() / 1024))
+                .arg(info.fileName()),
+            m_backupList);
+        item->setData(Qt::UserRole, path);
+        item->setToolTip(QDir::toNativeSeparators(path));
+    }
+
+    if (m_backupList->count() > 0)
+        m_backupList->setCurrentRow(0);
+    if (m_restoreButton)
+        m_restoreButton->setEnabled(m_backupList->currentItem() != nullptr);
 }
 
 void SettingsDialog::createBackupNow()
@@ -217,6 +271,60 @@ void SettingsDialog::createBackupNow()
     refreshBackupInfo();
     if (m_backupStatus)
         m_backupStatus->setText(tr("Резервная копия создана."));
+}
+
+void SettingsDialog::restoreSelectedBackup()
+{
+    const QListWidgetItem *item =
+        m_backupList ? m_backupList->currentItem() : nullptr;
+    if (!item) {
+        QMessageBox::information(
+            this, tr("Восстановление из копии"),
+            tr("Выберите резервную копию в списке."));
+        return;
+    }
+
+    const QString backupPath = item->data(Qt::UserRole).toString();
+    const auto answer = QMessageBox::warning(
+        this, tr("Восстановление из копии"),
+        tr("Текущая база данных будет заменена копией:\n%1\n\n"
+           "Текущая база сохранится рядом с копиями как "
+           "veterans-before-restore-*.db, поэтому откат возможен.\n\n"
+           "После восстановления приложение перезапустится. Продолжить?")
+            .arg(QDir::toNativeSeparators(backupPath)),
+        QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+    if (answer != QMessageBox::Yes)
+        return;
+
+    const QString databaseFile = AppPaths::databaseFile();
+
+    // restore() подменяет файл, поэтому SQLite должен отпустить базу вместе
+    // с журналами WAL/SHM — иначе копия окажется поверх открытого соединения.
+    Database::close();
+
+    QString error;
+    if (!BackupService::restore(backupPath, databaseFile, &error)) {
+        // Возвращаем приложение в рабочее состояние: база открывается заново,
+        // данные остаются теми же, что были до попытки восстановления.
+        const Database::OpenResult reopened = Database::open(databaseFile);
+        if (!reopened.ok) {
+            QMessageBox::critical(
+                this, tr("База данных не открывается"),
+                tr("Восстановление не удалось, и базу не удалось открыть "
+                   "заново:\n\n%1").arg(reopened.error));
+            return;
+        }
+        QMessageBox::warning(this, tr("Восстановление не удалось"), error);
+        refreshBackupInfo();
+        return;
+    }
+
+    m_restartRequested = true;
+    QMessageBox::information(
+        this, tr("Восстановление из копии"),
+        tr("База данных восстановлена из копии. Приложение будет "
+           "перезапущено."));
+    accept();   // MainWindow увидит restartRequested() и перезапустит процесс
 }
 
 void SettingsDialog::openBackupsFolder()

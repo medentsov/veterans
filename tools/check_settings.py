@@ -113,6 +113,16 @@ def check_dialog():
 
     check("резервные копии: список, создание и папка", backups)
 
+    def restore():
+        # Критерий приёмки 7: копия должна восстанавливаться через настройки.
+        require(text, "BackupService::restore(", "вызов восстановления")
+        require(text, "restoreSelectedBackup", "кнопка «Восстановить…»")
+        require(text, "Database::close()", "закрытие базы перед подменой файла")
+        require(text, "m_restartRequested = true",
+                "перезапуск после восстановления")
+
+    check("резервные копии: восстановление через настройки", restore)
+
 
 def check_save():
     text = read(SETTINGS_CPP)

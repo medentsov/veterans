@@ -2,11 +2,14 @@
 
 #include <QDialog>
 #include <QString>
+#include <QStringList>
 
 class QCheckBox;
 class QComboBox;
 class QLabel;
 class QLineEdit;
+class QListWidget;
+class QPushButton;
 class QWidget;
 
 /// Настройки приложения (M9-01): тема, реквизиты для печати, файл БД, бэкапы.
@@ -33,7 +36,9 @@ private:
     QWidget *createDatabaseTab();
     QWidget *createBackupTab();
     void refreshBackupInfo();
+    void refreshBackupList(const QStringList &backups);
     void createBackupNow();
+    void restoreSelectedBackup();
     void openBackupsFolder();
     void changeDatabaseFile();
     void resetSettings();
@@ -45,5 +50,7 @@ private:
     QLineEdit *m_databasePath = nullptr;
     QLabel *m_backupInfo = nullptr;
     QLabel *m_backupStatus = nullptr;
+    QListWidget *m_backupList = nullptr;
+    QPushButton *m_restoreButton = nullptr;
     bool m_restartRequested = false;
 };
