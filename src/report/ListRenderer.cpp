@@ -199,30 +199,42 @@ bool ListRenderer::render(QPrinter &printer,
     if (!layout.isValid())
         return fail(QStringLiteral("Не удалось настроить альбомный лист A4."));
     printer.setPageLayout(layout);
-    printer.setFullPage(true);
+    // setFullPage(false): НЕ включаем «полный лист». У сетевого принтера есть
+    // несъёмные поля (у HP LJ 5100 — 4,2 мм слева и 4,7 мм справа), поэтому
+    // печать «от края листа» уходила за границу печатаемой области: справа
+    // обрезало «Записей: 2» до «Записе», а подвал «Стр. X из Y» не печатался.
+    //
+    // Геометрию берём у самого устройства. После setPageLayout() драйвер уже
+    // отдаёт область, равную листу минус наши поля (paintRect). Если движок
+    // (например, PDF) отдаёт полный лист, пересчитываем от paintRect.
+    printer.setFullPage(false);
 
-    // Поля берутся из заданного макета: у PDF-движка собственные поля нулевые,
-    // а setFullPage(true) заставляет paintRect() вернуть весь лист — контент
-    // лёг бы в самый край и таблица обрезалась бы справа.
-    const QRectF fullMm = printer.pageLayout().fullRect(QPageLayout::Millimeter);
-    const QSizeF paperMm = layout.pageSize().size(QPageSize::Millimeter);
-    const QMarginsF marginsMm = layout.margins(QPageLayout::Millimeter);
-    const QRectF contentMm(
-        marginsMm.left(), marginsMm.top(),
-        paperMm.width() - marginsMm.left() - marginsMm.right(),
-        paperMm.height() - marginsMm.top() - marginsMm.bottom());
-    if (fullMm.width() <= 0 || contentMm.width() <= 0) {
-        return fail(QStringLiteral("Не удалось определить размеры страницы."));
+    const QRectF paintPx =
+        printer.pageLayout().paintRectPixels(printer.resolution());
+    const int deviceWidthPx = printer.width();
+    const int deviceHeightPx = printer.height();
+    if (deviceWidthPx <= 0 || deviceHeightPx <= 0
+        || paintPx.width() <= 0 || paintPx.height() <= 0) {
+        return fail(QStringLiteral("Не удалось определить печатаемую область."));
     }
 
-    const qreal pxPerMm = printer.width() / fullMm.width();
+    // Устройство уже равно области печати (типичный случай для драйвера
+    // Windows): тогда поля уже учтены, и сдвигать контент не нужно.
+    const bool deviceIsPaintRect =
+        qAbs(deviceWidthPx - paintPx.width()) <= 2
+        && qAbs(deviceHeightPx - paintPx.height()) <= 2;
+
+    const qreal contentWidthPx = deviceIsPaintRect ? deviceWidthPx : paintPx.width();
+    const qreal contentHeightPx = deviceIsPaintRect ? deviceHeightPx : paintPx.height();
+    const qreal offsetXPx = deviceIsPaintRect ? 0.0 : paintPx.x();
+    const qreal offsetYPx = deviceIsPaintRect ? 0.0 : paintPx.y();
+    if (contentWidthPx <= 0 || contentHeightPx <= 0)
+        return fail(QStringLiteral("Не удалось определить размеры страницы."));
+
+    // pxPerMm нужен только для толщин линий, отступов и минимальных высот.
+    const qreal pxPerMm = printer.logicalDpiX() / 25.4;
     if (pxPerMm <= 0)
         return fail(QStringLiteral("Не удалось определить разрешение печати."));
-
-    const qreal contentWidthPx = contentMm.width() * pxPerMm;
-    const qreal contentHeightPx = contentMm.height() * pxPerMm;
-    const qreal offsetXPx = contentMm.left() * pxPerMm;
-    const qreal offsetYPx = contentMm.top() * pxPerMm;
 
     // Полезная ширина A4 в альбомной ориентации — ровно 267 мм;
     // коэффициент страхует от округления драйвера/PDF-движка.

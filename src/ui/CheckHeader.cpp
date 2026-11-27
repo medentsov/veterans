@@ -2,6 +2,7 @@
 
 #include <QMouseEvent>
 #include <QPainter>
+#include <QPainterPath>
 #include <QStyle>
 #include <QStyleOptionButton>
 #include <QStyleOptionHeader>
@@ -41,26 +42,51 @@ void CheckHeader::paintSection(QPainter *painter, const QRect &rect,
     option.text.clear();
     style()->drawControl(QStyle::CE_Header, &option, painter, this);
 
-    QStyleOptionButton check;
-    check.state = QStyle::State_Enabled;
-    switch (m_state) {
-    case Qt::Checked:
-        check.state |= QStyle::State_On;
-        break;
-    case Qt::PartiallyChecked:
-        check.state |= QStyle::State_NoChange;
-        break;
-    default:
-        check.state |= QStyle::State_Off;
-        break;
-    }
-
+    // Рисуем чекбокс вручную: для PartiallyChecked используем минус/дефис
+    // вместо закрашенного прямоугольника (State_NoChange), чтобы не
+    // сбивать с толку пользователя («лишний прямоугольник» в заголовке).
     const int size = style()->pixelMetric(QStyle::PM_IndicatorWidth,
                                           nullptr, this);
-    check.rect = QRect(rect.center().x() - size / 2,
-                       rect.center().y() - size / 2,
-                       size, size);
-    style()->drawPrimitive(QStyle::PE_IndicatorCheckBox, &check, painter, this);
+    const QRect checkRect(rect.center().x() - size / 2,
+                          rect.center().y() - size / 2,
+                          size, size);
+
+    // Фон чекбокса
+    QStyleOptionButton btn;
+    btn.rect = checkRect;
+    btn.state = QStyle::State_Enabled | QStyle::State_Raised;
+    style()->drawPrimitive(QStyle::PE_PanelButtonCommand, &btn, painter, this);
+
+    // Рамка
+    QPen pen = painter->pen();
+    pen.setColor(palette().color(QPalette::WindowText));
+    painter->setPen(pen);
+    painter->setBrush(Qt::NoBrush);
+    painter->drawRect(checkRect.adjusted(0, 0, -1, -1));
+
+    // Содержимое в зависимости от состояния
+    const int inset = qMax(2, size / 6);
+    const QRect inner = checkRect.adjusted(inset, inset, -inset, -inset);
+
+    if (m_state == Qt::Checked) {
+        // Галочка
+        painter->setRenderHint(QPainter::Antialiasing, true);
+        QPainterPath tick;
+        tick.moveTo(inner.left() + inner.width() * 0.2, inner.center().y());
+        tick.lineTo(inner.center().x(), inner.bottom() - inner.height() * 0.15);
+        tick.lineTo(inner.right() - inner.width() * 0.15, inner.top() + inner.height() * 0.15);
+        painter->setPen(QPen(palette().color(QPalette::WindowText), qMax(1.5, size / 10.0),
+                             Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+        painter->drawPath(tick);
+    } else if (m_state == Qt::PartiallyChecked) {
+        // Минус/дефис вместо закрашенного квадрата
+        const int barH = qMax(2, size / 8);
+        const QRect bar(inner.center().x() - inner.width() / 3,
+                        inner.center().y() - barH / 2,
+                        inner.width() * 2 / 3, barH);
+        painter->fillRect(bar, palette().color(QPalette::WindowText));
+    }
+    // Unchecked — пустой квадрат, ничего не рисуем внутри
 
     painter->restore();
 }

@@ -246,42 +246,63 @@ bool CardRenderer::render(QPrinter &printer,
     }
 
     printer.setPageLayout(layout);
-    printer.setFullPage(true);
+    // setFullPage(false): НЕ включаем «полный лист». У сетевого принтера есть
+    // несъёмные поля (у HP LJ 5100 — 4,2 мм слева, 4,7 мм справа), и печать
+    // «от края листа» уходила за печатаемую область: справа обрезало номер
+    // карточки («№0» вместо «№ 000014»).
+    //
+    // Геометрию берём у устройства: после setPageLayout() драйвер отдаёт
+    // область «лист минус наши поля» (paintRect). Если движок отдаёт полный
+    // лист — пересчитываем от paintRect.
+    printer.setFullPage(false);
 
-    // Поля берутся из заданного макета: у PDF-движка собственные поля нулевые,
-    // и paintRect() вернул бы весь лист — контент лёг бы в самый край.
-    const QSizeF paperMm = layout.pageSize().size(QPageSize::Millimeter);
-    const QMarginsF marginsMm = layout.margins(QPageLayout::Millimeter);
-    const QRectF contentMm(
-        marginsMm.left(),
-        marginsMm.top(),
-        paperMm.width() - marginsMm.left() - marginsMm.right(),
-        paperMm.height() - marginsMm.top() - marginsMm.bottom());
-    if (paperMm.width() <= 0 || contentMm.width() <= 0) {
+    const QRectF paintPx =
+        printer.pageLayout().paintRectPixels(printer.resolution());
+    const int deviceWidthPx = printer.width();
+    const int deviceHeightPx = printer.height();
+    if (deviceWidthPx <= 0 || deviceHeightPx <= 0
+        || paintPx.width() <= 0 || paintPx.height() <= 0) {
+        if (error)
+            *error = QStringLiteral("Не удалось определить печатаемую область.");
+        return false;
+    }
+
+    const bool deviceIsPaintRect =
+        qAbs(deviceWidthPx - paintPx.width()) <= 2
+        && qAbs(deviceHeightPx - paintPx.height()) <= 2;
+
+    const qreal contentWidthPx = deviceIsPaintRect ? deviceWidthPx : paintPx.width();
+    const qreal contentHeightPx = deviceIsPaintRect ? deviceHeightPx : paintPx.height();
+    const qreal offsetXPx = deviceIsPaintRect ? 0.0 : paintPx.x();
+    const qreal offsetYPx = deviceIsPaintRect ? 0.0 : paintPx.y();
+    if (contentWidthPx <= 0 || contentHeightPx <= 0) {
         if (error)
             *error = QStringLiteral("Не удалось определить размеры страницы.");
         return false;
     }
 
-    const qreal pageWidthPx = contentMm.width() * 96.0 / 25.4;
-    const qreal pageHeightPx = contentMm.height() * 96.0 / 25.4;
-    const qreal offsetXPx = contentMm.left() * 96.0 / 25.4;
-    const qreal offsetYPx = contentMm.top() * 96.0 / 25.4;
-
     // Документ верстается в логических 96 dpi: тогда px в HTML — это 1/96″
     // на любом принтере, и вёрстка предпросмотра совпадает с печатью.
-    const qreal deviceScale = printer.width() / (paperMm.width() * 96.0 / 25.4);
-    if (deviceScale <= 0) {
+    const qreal logicalPxPerMm = 96.0 / 25.4;
+    const qreal pxPerMm = printer.logicalDpiX() / 25.4;
+    if (pxPerMm <= 0) {
         if (error)
             *error = QStringLiteral("Не удалось определить разрешение печати.");
         return false;
     }
 
+    // Масштаб логических 96 dpi -> пиксели устройства.
+    const qreal deviceScale = pxPerMm / logicalPxPerMm;
+
+    // Область контента в логических px документа.
+    const qreal logicalContentWidthPx  = contentWidthPx  / deviceScale;
+    const qreal logicalContentHeightPx = contentHeightPx / deviceScale;
+
     QTextDocument document;
     document.setDocumentMargin(0);
     document.setHtml(toHtml(record, cardNumber, formedDate, organizationName));
-    document.setTextWidth(pageWidthPx);
-    document.setPageSize(QSizeF(pageWidthPx, pageHeightPx));
+    document.setTextWidth(logicalContentWidthPx);
+    document.setPageSize(QSizeF(logicalContentWidthPx, logicalContentHeightPx));
 
     // QTextDocument::print() не используется: он сам нумерует страницы в правом
     // нижнем углу, а макет требует «нумерация не нужна», и он же добавляет
@@ -300,9 +321,13 @@ bool CardRenderer::render(QPrinter &printer,
             printer.newPage();
         painter.save();
         painter.scale(deviceScale, deviceScale);
-        painter.translate(offsetXPx, offsetYPx - page * pageHeightPx);
+        painter.translate(offsetXPx / deviceScale,
+                          offsetYPx / deviceScale
+                              - page * logicalContentHeightPx);
         document.drawContents(
-            &painter, QRectF(0.0, page * pageHeightPx, pageWidthPx, pageHeightPx));
+            &painter,
+            QRectF(0.0, page * logicalContentHeightPx,
+                   logicalContentWidthPx, logicalContentHeightPx));
         painter.restore();
     }
     painter.end();
